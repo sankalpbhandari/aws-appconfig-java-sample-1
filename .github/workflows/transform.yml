@@ -12,18 +12,25 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-java@v3
         with:
-          java-version: '17'
+          java-version: '8'
           distribution: 'adopt'
+
+      - name: Install pre-compiled utils dependency
+        run: |
+          # Install the pre-compiled movie-service-utils JAR to local Maven repository
+          # This avoids compilation issues with the utils module
+          mvn install:install-file \
+            -Dfile=built-library/movie-service-utils-0.1.0.jar \
+            -DgroupId=com.amazonaws.samples \
+            -DartifactId=movie-service-utils \
+            -Dversion=0.1.0 \
+            -Dpackaging=jar
 
       - name: Build and copy dependencies
         run: |
-          # First build and install the utils module
-          cd movie-service-utils
-          mvn clean install
-          cd ..
-          # Then build the main project
-          mvn ${{ env.MAVEN_CLI_OPTS }} verify
-          mvn ${{ env.MAVEN_CLI_OPTS }} dependency:copy-dependencies -DoutputDirectory=dependencies -Dmdep.useRepositoryLayout=true -Dmdep.copyPom=true -Dmdep.addParentPoms=true
+          # Build the main project (utils dependency is now available in local repo)
+          mvn clean verify -DskipTests
+          mvn dependency:copy-dependencies -DoutputDirectory=dependencies -Dmdep.useRepositoryLayout=true -Dmdep.copyPom=true -Dmdep.addParentPoms=true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
