@@ -4,82 +4,56 @@ on:
   push:
     branches:
       - 'Q-TRANSFORM-issue-*'
-  pull_request:
-    branches:
-      - 'Q-TRANSFORM-issue-*'
+
+env:
+   MAVEN_CLI_OPTS: >-
+     -Djava.version=${{ contains(github.event.head_commit.message, 'Code transformation completed') && '17' || '8' }}
 
 jobs:
   q-code-transformation:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Determine Java version
-        id: java-version
-        run: |
-          if [[ "${{ github.ref_name }}" == Q-TRANSFORM-issue-* ]] && [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "java_version=17" >> $GITHUB_OUTPUT
-            echo "maven_java_version=17" >> $GITHUB_OUTPUT
-          else
-            echo "java_version=8" >> $GITHUB_OUTPUT
-            echo "maven_java_version=1.8" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
-          java-version: ${{ steps.java-version.outputs.java_version }}
+          java-version: ${{ contains(github.event.head_commit.message, 'Code transformation completed') && '17' || '8' }}
           distribution: 'temurin'
-      
+
       - name: Cache Maven dependencies
         uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      
-      - name: Set Maven CLI options
-        run: |
-          echo "MAVEN_CLI_OPTS=--batch-mode --errors --fail-at-end --show-version -Djava.version=${{ steps.java-version.outputs.maven_java_version }}" >> $GITHUB_ENV
-      
+
       - name: Install movie-service-utils dependency
         run: |
-          echo "Installing movie-service-utils to local Maven repository..."
-          cd movie-service-utils
-          mvn $MAVEN_CLI_OPTS clean install -DskipTests
-          cd ..
-      
-      - name: Build and verify main project
+          echo "Installing pre-built movie-service-utils JAR to local Maven repository..."
+          mvn install:install-file \
+            -Dfile=./movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar \
+            -DgroupId=com.amazonaws.samples \
+            -DartifactId=movie-service-utils \
+            -Dversion=0.1.0 \
+            -Dpackaging=jar
+
+      - name: Build and copy dependencies
         run: |
-          echo "Using Java version: ${{ steps.java-version.outputs.java_version }}"
-          echo "Maven CLI options: $MAVEN_CLI_OPTS"
-          mvn $MAVEN_CLI_OPTS verify
-      
-      - name: Copy dependencies
-        run: |
-          mvn $MAVEN_CLI_OPTS dependency:copy-dependencies \
-            -DoutputDirectory=dependencies \
-            -Dmdep.useRepositoryLayout=true \
-            -Dmdep.copyPom=true \
-            -Dmdep.addParentPoms=true
-      
-      - name: Upload dependencies artifact
+          mvn ${{ env.MAVEN_CLI_OPTS }} clean install -U
+          mvn ${{ env.MAVEN_CLI_OPTS }} verify
+          mvn ${{ env.MAVEN_CLI_OPTS }} dependency:copy-dependencies -DoutputDirectory=dependencies -Dmdep.useRepositoryLayout=true -Dmdep.copyPom=true -Dmdep.addParentPoms=true
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: q-code-transformation-dependencies
-          path: dependencies/
-          retention-days: 30
-        if: always()
-      
+          path: dependencies
+
       - name: Debug information
         if: failure()
         run: |
           echo "Branch: ${{ github.ref_name }}"
-          echo "Event: ${{ github.event_name }}"
-          echo "Java version used: ${{ steps.java-version.outputs.java_version }}"
-          echo "Maven Java version: ${{ steps.java-version.outputs.maven_java_version }}"
+          echo "Commit message: ${{ github.event.head_commit.message }}"
+          echo "Java version logic result: ${{ contains(github.event.head_commit.message, 'Code transformation completed') && '17' || '8' }}"
           echo "Local Maven repository contents:"
           find ~/.m2/repository/com/amazonaws/samples -name "*.jar" 2>/dev/null || echo "No movie-service-utils found in local repo"
           java -version
