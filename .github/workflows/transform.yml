@@ -17,6 +17,11 @@ jobs:
 
       - name: Build and copy dependencies
         run: |
+          # First build and install the utils module
+          cd movie-service-utils
+          mvn clean install
+          cd ..
+          # Then build the main project
           mvn ${{ env.MAVEN_CLI_OPTS }} verify
           mvn ${{ env.MAVEN_CLI_OPTS }} dependency:copy-dependencies -DoutputDirectory=dependencies -Dmdep.useRepositoryLayout=true -Dmdep.copyPom=true -Dmdep.addParentPoms=true
 
