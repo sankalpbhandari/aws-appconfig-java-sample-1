@@ -20,7 +20,7 @@ jobs:
           # Install the pre-compiled movie-service-utils JAR to local Maven repository
           # This avoids compilation issues with the utils module
           mvn install:install-file \
-            -Dfile=built-library/movie-service-utils-0.1.0.jar \
+            -Dfile=built-library/0_1_0/movie-service-utils-0.1.0.jar \
             -DgroupId=com.amazonaws.samples \
             -DartifactId=movie-service-utils \
             -Dversion=0.1.0 \
