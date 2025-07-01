@@ -15,12 +15,25 @@ jobs:
           java-version: '8'
           distribution: 'adopt'
 
+      - name: Debug - List available files
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "Files in root:"
+          ls -la
+          echo "Files in movie-service-utils:"
+          ls -la movie-service-utils/
+          echo "Files in movie-service-utils/built-library:"
+          ls -la movie-service-utils/built-library/
+          echo "Files in movie-service-utils/built-library/0_1_0:"
+          ls -la movie-service-utils/built-library/0_1_0/
+
       - name: Install pre-compiled utils dependency
         run: |
           # Install the pre-compiled movie-service-utils JAR to local Maven repository
           # This avoids compilation issues with the utils module
           mvn install:install-file \
-            -Dfile=built-library/0_1_0/movie-service-utils-0.1.0.jar \
+            -Dfile=movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar \
             -DgroupId=com.amazonaws.samples \
             -DartifactId=movie-service-utils \
             -Dversion=0.1.0 \
