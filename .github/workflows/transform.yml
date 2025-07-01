@@ -30,14 +30,21 @@ jobs:
 
       - name: Install pre-compiled utils dependency
         run: |
-          # Install the pre-compiled movie-service-utils JAR to local Maven repository
-          # This avoids compilation issues with the utils module
-          mvn install:install-file \
-            -Dfile=movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar \
-            -DgroupId=com.amazonaws.samples \
-            -DartifactId=movie-service-utils \
-            -Dversion=0.1.0 \
-            -Dpackaging=jar
+          # Try to install the pre-compiled movie-service-utils JAR to local Maven repository
+          if [ -f "movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar" ]; then
+            echo "Using pre-compiled JAR..."
+            mvn install:install-file \
+              -Dfile=movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar \
+              -DgroupId=com.amazonaws.samples \
+              -DartifactId=movie-service-utils \
+              -Dversion=0.1.0 \
+              -Dpackaging=jar
+          else
+            echo "Pre-compiled JAR not found, building from source..."
+            cd movie-service-utils
+            mvn clean install -DskipTests
+            cd ..
+          fi
 
       - name: Build and copy dependencies
         run: |
