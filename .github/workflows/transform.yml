@@ -32,16 +32,24 @@ jobs:
         run: |
           # Try to install the pre-compiled movie-service-utils JAR to local Maven repository
           if [ -f "movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar" ]; then
-            echo "Using pre-compiled JAR..."
+            echo "Using pre-compiled JAR with correct group ID..."
+            # Install with the group ID that matches what the main pom.xml expects
             mvn install:install-file \
               -Dfile=movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar \
-              -DgroupId=org.amazonaws.samples \
+              -DgroupId=com.amazonaws.samples \
               -DartifactId=movie-service-utils \
               -Dversion=0.1.0 \
               -Dpackaging=jar
           else
-            echo "Pre-compiled JAR not found, building from source..."
+            echo "Pre-compiled JAR not found, trying to build from source with Java 8..."
             cd movie-service-utils
+            # Temporarily modify the pom.xml to use Java 8 and correct group ID
+            sed -i 's/<java.version>17<\/java.version>/<java.version>8<\/java.version>/g' pom.xml
+            sed -i 's/<maven.compiler.source>17<\/maven.compiler.source>/<maven.compiler.source>8<\/maven.compiler.source>/g' pom.xml
+            sed -i 's/<maven.compiler.target>17<\/maven.compiler.target>/<maven.compiler.target>8<\/maven.compiler.target>/g' pom.xml
+            sed -i 's/<maven.compiler.release>17<\/maven.compiler.release>/<maven.compiler.release>8<\/maven.compiler.release>/g' pom.xml
+            sed -i 's/<groupId>org.amazonaws.samples<\/groupId>/<groupId>com.amazonaws.samples<\/groupId>/g' pom.xml
+            sed -i 's/<version>0.2.0<\/version>/<version>0.1.0<\/version>/g' pom.xml
             mvn clean install -DskipTests
             cd ..
           fi
