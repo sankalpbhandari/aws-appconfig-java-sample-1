@@ -3,25 +3,52 @@ name: Q Code Transformation
 on:
   push:
     branches:
-      - 'q/transform-**'  # Matches branches starting with q/transform-
+      - 'Q-TRANSFORM-issue-*'
+  pull_request:
+    branches:
+      - 'Q-TRANSFORM-issue-*'
 
 jobs:
   q-code-transformation:
     runs-on: ubuntu-latest
     
-    container:
-      image: maven:3.8-openjdk-8  # Same image as GitLab CI
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Set up Maven CLI options
+      - name: Determine Java version
+        id: java-version
         run: |
-          echo "MAVEN_CLI_OPTS=--batch-mode --errors --fail-at-end --show-version -DinstallAtEnd=true -DdeployAtEnd=true" >> $GITHUB_ENV
+          if [[ "${{ github.ref_name }}" == Q-TRANSFORM-issue-* ]] && [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "java_version=17" >> $GITHUB_OUTPUT
+            echo "maven_java_version=17" >> $GITHUB_OUTPUT
+          else
+            echo "java_version=8" >> $GITHUB_OUTPUT
+            echo "maven_java_version=1.8" >> $GITHUB_OUTPUT
+          fi
       
-      - name: Run Maven verify
-        run: mvn $MAVEN_CLI_OPTS verify
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ steps.java-version.outputs.java_version }}
+          distribution: 'temurin'  # More reliable than 'adopt'
+      
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      
+      - name: Set Maven CLI options
+        run: |
+          echo "MAVEN_CLI_OPTS=--batch-mode --errors --fail-at-end --show-version -Djava.version=${{ steps.java-version.outputs.maven_java_version }}" >> $GITHUB_ENV
+      
+      - name: Build and verify
+        run: |
+          echo "Using Java version: ${{ steps.java-version.outputs.java_version }}"
+          echo "Maven CLI options: $MAVEN_CLI_OPTS"
+          mvn $MAVEN_CLI_OPTS verify
       
       - name: Copy dependencies
         run: |
@@ -36,4 +63,15 @@ jobs:
         with:
           name: q-code-transformation-dependencies
           path: dependencies/
-          retention-days: 30  # Optional: set retention period
+          retention-days: 30
+        if: always()  # Upload even if previous steps fail
+      
+      - name: Debug information
+        if: failure()
+        run: |
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Java version used: ${{ steps.java-version.outputs.java_version }}"
+          echo "Maven Java version: ${{ steps.java-version.outputs.maven_java_version }}"
+          java -version
+          mvn -version
