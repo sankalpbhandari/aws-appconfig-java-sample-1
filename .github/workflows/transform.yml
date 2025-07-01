@@ -32,11 +32,19 @@ jobs:
         run: |
           # Try to install the pre-compiled movie-service-utils JAR to local Maven repository
           if [ -f "movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar" ]; then
-            echo "Using pre-compiled JAR with correct group ID..."
-            # Install with the group ID that matches what the main pom.xml expects
+            echo "Using pre-compiled JAR..."
+            # Install with both possible group IDs to cover all cases
+            echo "Installing with com.amazonaws.samples group ID..."
             mvn install:install-file \
               -Dfile=movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar \
               -DgroupId=com.amazonaws.samples \
+              -DartifactId=movie-service-utils \
+              -Dversion=0.1.0 \
+              -Dpackaging=jar
+            echo "Installing with org.amazonaws.samples group ID..."
+            mvn install:install-file \
+              -Dfile=movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar \
+              -DgroupId=org.amazonaws.samples \
               -DartifactId=movie-service-utils \
               -Dversion=0.1.0 \
               -Dpackaging=jar
