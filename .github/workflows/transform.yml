@@ -49,8 +49,26 @@ jobs:
               -Dversion=0.1.0 \
               -Dpackaging=jar
           else
-            echo "Pre-compiled JAR not found, trying to build from source with Java 8..."
+            echo "Pre-compiled JAR not found, fixing MovieUtils class and building from source..."
             cd movie-service-utils
+            # Add the missing isValidMovieName method to MovieUtils class
+            echo "" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "    /**" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "     * Validates if a movie name meets the required criteria" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "     * @param movieName The name of the movie to validate" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "     * @return true if the movie name is valid, false otherwise" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "     */" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "    public static boolean isValidMovieName(String movieName) {" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "        if (movieName == null || movieName.trim().isEmpty()) {" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "            return false;" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "        }" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "        // Movie name should be between 1 and 200 characters" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "        return movieName.trim().length() > 0 && movieName.trim().length() <= 200;" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "    }" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "}" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            # Remove the original closing brace since we added a new one
+            sed -i '$ d' src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            sed -i '$ d' src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
             # Temporarily modify the pom.xml to use Java 8 and correct group ID
             sed -i 's/<java.version>17<\/java.version>/<java.version>8<\/java.version>/g' pom.xml
             sed -i 's/<maven.compiler.source>17<\/maven.compiler.source>/<maven.compiler.source>8<\/maven.compiler.source>/g' pom.xml
