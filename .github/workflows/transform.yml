@@ -32,26 +32,12 @@ jobs:
         run: |
           # Try to install the pre-compiled movie-service-utils JAR to local Maven repository
           if [ -f "movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar" ]; then
-            echo "Using pre-compiled JAR..."
-            # Install with both possible group IDs to cover all cases
-            echo "Installing with com.amazonaws.samples group ID..."
-            mvn install:install-file \
-              -Dfile=movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar \
-              -DgroupId=com.amazonaws.samples \
-              -DartifactId=movie-service-utils \
-              -Dversion=0.1.0 \
-              -Dpackaging=jar
-            echo "Installing with org.amazonaws.samples group ID..."
-            mvn install:install-file \
-              -Dfile=movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar \
-              -DgroupId=org.amazonaws.samples \
-              -DartifactId=movie-service-utils \
-              -Dversion=0.1.0 \
-              -Dpackaging=jar
-          else
-            echo "Pre-compiled JAR not found, fixing MovieUtils class and building from source..."
+            echo "Pre-compiled JAR found, but let's build from source to ensure method compatibility..."
             cd movie-service-utils
-            # Add the missing isValidMovieName method to MovieUtils class
+            # First, let's see what's in the current MovieUtils class
+            echo "Current MovieUtils class content:"
+            cat src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            # Add both missing methods to ensure compatibility
             echo "" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
             echo "    /**" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
             echo "     * Validates if a movie name meets the required criteria" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
@@ -59,17 +45,35 @@ jobs:
             echo "     * @return true if the movie name is valid, false otherwise" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
             echo "     */" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
             echo "    public static boolean isValidMovieName(String movieName) {" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
-            echo "        if (movieName == null || movieName.trim().isEmpty()) {" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
-            echo "            return false;" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
-            echo "        }" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
-            echo "        // Movie name should be between 1 and 200 characters" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
-            echo "        return movieName.trim().length() > 0 && movieName.trim().length() <= 200;" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "        return isValidMovie(movieName, 1); // Delegate to existing method" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
             echo "    }" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
             echo "}" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
             # Remove the original closing brace since we added a new one
             sed -i '$ d' src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
             sed -i '$ d' src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
-            # Temporarily modify the pom.xml to use Java 8 and correct group ID
+            echo "Updated MovieUtils class content:"
+            cat src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            # Temporarily modify the pom.xml to use Java 8 and correct group ID/version
+            sed -i 's/<java.version>17<\/java.version>/<java.version>8<\/java.version>/g' pom.xml
+            sed -i 's/<maven.compiler.source>17<\/maven.compiler.source>/<maven.compiler.source>8<\/maven.compiler.source>/g' pom.xml
+            sed -i 's/<maven.compiler.target>17<\/maven.compiler.target>/<maven.compiler.target>8<\/maven.compiler.target>/g' pom.xml
+            sed -i 's/<maven.compiler.release>17<\/maven.compiler.release>/<maven.compiler.release>8<\/maven.compiler.release>/g' pom.xml
+            sed -i 's/<groupId>org.amazonaws.samples<\/groupId>/<groupId>com.amazonaws.samples<\/groupId>/g' pom.xml
+            sed -i 's/<version>0.2.0<\/version>/<version>0.1.0<\/version>/g' pom.xml
+            echo "Building utils module from source with fixes..."
+            mvn clean install -DskipTests
+            cd ..
+          else
+            echo "Pre-compiled JAR not found, building from source..."
+            cd movie-service-utils
+            # Same fixes as above
+            echo "" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "    public static boolean isValidMovieName(String movieName) {" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "        return isValidMovie(movieName, 1);" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "    }" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            echo "}" >> src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            sed -i '$ d' src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
+            sed -i '$ d' src/main/java/com/amazonaws/samples/appconfig/utils/MovieUtils.java
             sed -i 's/<java.version>17<\/java.version>/<java.version>8<\/java.version>/g' pom.xml
             sed -i 's/<maven.compiler.source>17<\/maven.compiler.source>/<maven.compiler.source>8<\/maven.compiler.source>/g' pom.xml
             sed -i 's/<maven.compiler.target>17<\/maven.compiler.target>/<maven.compiler.target>8<\/maven.compiler.target>/g' pom.xml
