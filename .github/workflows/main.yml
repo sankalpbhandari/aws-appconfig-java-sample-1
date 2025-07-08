@@ -7,7 +7,9 @@ on:
 
 env:
    MAVEN_CLI_OPTS: >-
-     -Djava.version=${{ contains(github.event.head_commit.message, 'Code transformation completed') && '17' || '8' }}
+     -Djava.version=${{ contains(github.event.head_commit.message, 'Code transformation completed') && '17' || '1.8' }}
+     -Dmaven.compiler.source=${{ contains(github.event.head_commit.message, 'Code transformation completed') && '17' || '1.8' }}
+     -Dmaven.compiler.target=${{ contains(github.event.head_commit.message, 'Code transformation completed') && '17' || '1.8' }}
 
 jobs:
   q-code-transformation:
@@ -29,12 +31,21 @@ jobs:
       - name: Install movie-service-utils dependency
         run: |
           echo "Installing pre-built movie-service-utils JAR to local Maven repository..."
-          mvn install:install-file \
-            -Dfile=./movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar \
-            -DgroupId=com.amazonaws.samples \
-            -DartifactId=movie-service-utils \
-            -Dversion=0.1.0 \
-            -Dpackaging=jar
+          if [[ "${{ contains(github.event.head_commit.message, 'Code transformation completed') }}" == "true" ]]; then
+            mvn install:install-file \
+              -Dfile=./movie-service-utils/built-library/0_2_0/movie-service-utils-0.2.0.jar \
+              -DgroupId=com.amazonaws.samples \
+              -DartifactId=movie-service-utils \
+              -Dversion=0.2.0 \
+              -Dpackaging=jar
+          else
+            mvn install:install-file \
+              -Dfile=./movie-service-utils/built-library/0_1_0/movie-service-utils-0.1.0.jar \
+              -DgroupId=com.amazonaws.samples \
+              -DartifactId=movie-service-utils \
+              -Dversion=0.1.0 \
+              -Dpackaging=jar
+          fi
 
       - name: Build and copy dependencies
         run: |
